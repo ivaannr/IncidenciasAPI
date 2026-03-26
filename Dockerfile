@@ -1,11 +1,24 @@
-# Stage 1: Build
-FROM gradle:7.5.1-jdk11 AS builder
-WORKDIR /app
-COPY . ./
-RUN gradle build --no-daemon
+# Use the official Maven image to build the application
+FROM maven:3.8.6-openjdk-17 AS build
 
-# Stage 2: Run
-FROM openjdk:11-jre-slim
+# Set the working directory
 WORKDIR /app
-COPY --from=builder /app/build/libs/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Copy the pom.xml and the source code
+COPY pom.xml .
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Use the official eclipse-temurin JRE image for the production stage
+FROM eclipse-temurin:21-jre-alpine
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the jar file from the build stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Run the application
+ENTRYPOINT ["java","-jar","/app/app.jar"]
